@@ -163,3 +163,17 @@ mqtt:
       force_update: true
       payload_on: "1"
       payload_off: "0"
+
+sensor:
+  - platform: template
+    sensors:
+      apparent_temperature:
+        value_template: >-
+          {% if states('sensor.outside_temperature') | float >= 80 and states('sensor.outside_humidity') | float >= 40 %}
+            {{ states('sensor.heat_index') }}
+          {% elif states('sensor.outside_temperature') | float <= 50 and states('sensor.average_wind') | float >= 3 %}
+            {{ states('sensor.wind_chill') }}
+          {% else %}
+            {{ states('sensor.outside_temperature') }}
+          {% endif %}
+        unit_of_measurement: "°F"
