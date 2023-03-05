@@ -52,9 +52,6 @@ HEAT_INDEX_C9 = -1.99e-6
 
 # Returns heat index in Fahrenheit
 def heat_index(temp_f, relative_humidity):
-    if temp_f < 80 or relative_humidity < 40 or relative_humidity > 100:
-        return temp_f
-
     HI = (HEAT_INDEX_C1 + HEAT_INDEX_C2 * temp_f +
           HEAT_INDEX_C3 * relative_humidity +
           HEAT_INDEX_C4 * temp_f * relative_humidity +
@@ -69,10 +66,6 @@ def heat_index(temp_f, relative_humidity):
 
 # Returns wind chill in Fahrenheit
 def wind_chill(temp_f, wind_speed_mph):
-    # Check if the input values are within the accepted range
-    if temp_f > 50 or wind_speed_mph < 3:
-        return temp_f
-
     return 35.74+0.6215*(temp_f)-35.75*(wind_speed_mph)**0.16+0.4275*(temp_f)*(wind_speed_mph)**0.16
 
 

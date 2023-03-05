@@ -1,5 +1,4 @@
 from calendar import timegm
-import datetime
 import json
 import time
 
