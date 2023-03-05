@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.egg-info
+*.egg
+.cache
+.coverage
+.tox
+.eggs
+*.egg-info
+.installed.cfg
+*.egg
+*.egg-info
+*.eg

@@ -1,0 +1,15 @@
+[Unit]
+Description=mqtt-wx
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=env python3 /var/lib/mqtt-wx/main.py YOUR_PARAMS_HERE
+WorkingDirectory=/var/lib/mqtt-wx
+Restart=on-failure
+RestartSec=10
+ProtectHome=on
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

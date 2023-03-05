@@ -1,0 +1,165 @@
+mqtt:
+  sensor:
+    - name: Outside Temperature
+      state_class: measurement
+      device_class: temperature
+      unit_of_measurement: "°F"
+      value_template: |
+        {%- set t = value_json.outTemp | float %}
+        {{ (((t) * 9/5) + 32) | round(1) }}
+      state_topic: weather/station
+      force_update: true
+
+    - name: Living Room Temperature
+      state_class: measurement
+      device_class: temperature
+      unit_of_measurement: "°F"
+      value_template: |
+        {%- set t = value_json.inTemp | float %}
+        {{ (((t) * 9/5) + 32) | round(1) }}
+      state_topic: weather/station
+      force_update: true
+
+    - name: Outside Humidity
+      state_class: measurement
+      device_class: humidity
+      unit_of_measurement: "%"
+      value_template: "{{ value_json.outHumidity }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: Living Room Humidity
+      state_class: measurement
+      device_class: humidity
+      unit_of_measurement: "%"
+      value_template: "{{ value_json.inHumidity }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: Average Wind
+      state_class: measurement
+      device_class: wind_speed
+      unit_of_measurement: "mph"
+      value_template: "{{ (value_json.windSpeed | float * 2.23694) | round(1) }}"
+      force_update: true
+      state_topic: weather/station
+
+    - name: Peak Wind
+      state_class: measurement
+      device_class: wind_speed
+      unit_of_measurement: "mph"
+      value_template: "{{ (value_json.windGust | float * 2.23694) | round(1) }}"
+      force_update: true
+      state_topic: weather/station
+
+    - name: Wind Direction
+      unit_of_measurement: "°"
+      state_class: measurement
+      value_template: "{{ value_json.windDir }}"
+      force_update: true
+      state_topic: weather/station
+
+    - name: Total Precipitation
+      device_class: precipitation
+      unit_of_measurement: "in"
+      state_class: total_increasing
+      value_template: "{{ (value_json.rain | float / 25.4) | round (2) }}"
+      force_update: true
+      state_topic: weather/station
+
+    - name: UV Index
+      state_class: measurement
+      value_template: "{{ value_json.UV | float | round (0) }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: WX RX Noise
+      state_class: measurement
+      unit_of_measurement: "dBm"
+      value_template: "{{ value_json.outNoise }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: WX RX SNR
+      state_class: measurement
+      value_template: "{{ value_json.outSNR }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: WX RX RSSI
+      state_class: measurement
+      unit_of_measurement: "dBm"
+      value_template: "{{ value_json.outRSSI }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: Living Room RX Noise
+      state_class: measurement
+      unit_of_measurement: "dBm"
+      value_template: "{{ value_json.inNoise }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: Living Room RX SNR
+      state_class: measurement
+      value_template: "{{ value_json.inSNR }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: Living Room RX RSSI
+      state_class: measurement
+      unit_of_measurement: "dBm"
+      value_template: "{{ value_json.inRSSI }}"
+      state_topic: weather/station
+      force_update: true
+
+    - name: Heat Index
+      state_class: measurement
+      unit_of_measurement: "°F"
+      value_template: |
+        {%- set t = value_json.heatindex | float %}
+        {{ (((t) * 9/5) + 32) | round(1) }}
+      state_topic: weather/station
+      force_update: true
+
+    - name: Wind Chill
+      state_class: measurement
+      unit_of_measurement: "°F"
+      value_template: |
+        {%- set t = value_json.windchill | float %}
+        {{ (((t) * 9/5) + 32) | round(1) }}
+      state_topic: weather/station
+      force_update: true
+
+    - name: Dewpoint
+      state_class: measurement
+      unit_of_measurement: "°F"
+      value_template: |
+        {%- set t = value_json.dewpoint | float %}
+        {{ (((t) * 9/5) + 32) | round(1) }}
+      state_topic: weather/station
+      force_update: true
+
+    - name: Frostpoint
+      state_class: measurement
+      unit_of_measurement: "°F"
+      value_template: |
+        {%- set t = value_json.frostpoint | float %}
+        {{ (((t) * 9/5) + 32) | round(1) }}
+      state_topic: weather/station
+      force_update: true
+
+  binary_sensor:
+    - name: Weather Station Battery OK
+      value_template: "{{ value_json.outTempBatteryStatus }}"
+      state_topic: weather/station
+      force_update: true
+      payload_on: "0"
+      payload_off: "1"
+
+    - name: Living Room Temperature Sensor Battery OK
+      value_template: "{{ value_json.inTempBatteryStatus }}"
+      state_topic: weather/station
+      force_update: true
+      payload_on: "1"
+      payload_off: "0"
