@@ -1,5 +1,7 @@
+from calendar import timegm
 import datetime
 import json
+import time
 
 import paho.mqtt.client as mqtt
 
@@ -51,11 +53,9 @@ class MQTTClient:
             self.output_data["outSNR"] = data["snr"]
             self.output_data["outNoise"] = data["noise"]
 
-            utc_time = datetime.datetime.strptime(data["time"], '%Y-%m-%d %H:%M:%S')
-            local_tz = datetime.datetime.now().astimezone().tzinfo
-            local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone(local_tz)
-            self.output_data["outTime"] = local_time.strftime('%Y-%m-%dT%H:%M:%S%z')
-            self.output_data["dateTime"] = local_time.strftime('%Y-%m-%dT%H:%M:%S%z')
+            utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
+            self.output_data["outTime"] = timegm(utc)
+            self.output_data["dateTime"] = timegm(utc)
 
             self.output_data["heatindex"] = round(convert_f_to_c(heat_index(data["temperature_F"], data["humidity"])), 1)
             self.output_data["windchill"] = round(convert_f_to_c(wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))), 1)
@@ -73,10 +73,8 @@ class MQTTClient:
             self.output_data["inSNR"] = data["snr"]
             self.output_data["inNoise"] = data["noise"]
 
-            utc_time = datetime.datetime.strptime(data["time"], '%Y-%m-%d %H:%M:%S')
-            local_tz = datetime.datetime.now().astimezone().tzinfo
-            local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone(local_tz)
-            self.output_data["inTime"] = local_time.strftime('%Y-%m-%dT%H:%M:%S%z')
+            utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
+            self.output_data["inTime"] = timegm(utc)
 
         # Publish the updated output data as a JSON string on the output topic
         client.publish(self.output_topic, json.dumps(self.output_data))
