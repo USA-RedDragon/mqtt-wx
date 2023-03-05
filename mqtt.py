@@ -55,6 +55,7 @@ class MQTTClient:
             local_tz = datetime.datetime.now().astimezone().tzinfo
             local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone(local_tz)
             self.output_data["outTime"] = local_time.strftime('%Y-%m-%dT%H:%M:%S%z')
+            self.output_data["dateTime"] = local_time.strftime('%Y-%m-%dT%H:%M:%S%z')
 
             self.output_data["heatindex"] = round(convert_f_to_c(heat_index(data["temperature_F"], data["humidity"])), 1)
             self.output_data["windchill"] = round(convert_f_to_c(wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))), 1)
