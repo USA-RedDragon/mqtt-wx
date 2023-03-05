@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import paho.mqtt.client as mqtt
@@ -49,7 +50,12 @@ class MQTTClient:
             self.output_data["outRSSI"] = data["rssi"]
             self.output_data["outSNR"] = data["snr"]
             self.output_data["outNoise"] = data["noise"]
-            self.output_data["outTime"] = data["time"]
+
+            utc_time = datetime.datetime.strptime(data["time"], '%Y-%m-%d %H:%M:%S')
+            local_tz = datetime.datetime.now().astimezone().tzinfo
+            local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone(local_tz)
+            self.output_data["outTime"] = int(local_time.timestamp())
+
             self.output_data["heatindex"] = round(convert_f_to_c(heat_index(data["temperature_F"], data["humidity"])), 1)
             self.output_data["windchill"] = round(convert_f_to_c(wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))), 1)
             self.output_data["dewpoint"] = round(convert_f_to_c(dew_point(data["temperature_F"], data["humidity"])), 1)
@@ -65,7 +71,11 @@ class MQTTClient:
             self.output_data["inRSSI"] = data["rssi"]
             self.output_data["inSNR"] = data["snr"]
             self.output_data["inNoise"] = data["noise"]
-            self.output_data["inTime"] = data["time"]
+
+            utc_time = datetime.datetime.strptime(data["time"], '%Y-%m-%d %H:%M:%S')
+            local_tz = datetime.datetime.now().astimezone().tzinfo
+            local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone(local_tz)
+            self.output_data["inTime"] = int(local_time.timestamp())
 
         # Publish the updated output data as a JSON string on the output topic
         client.publish(self.output_topic, json.dumps(self.output_data))
