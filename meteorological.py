@@ -61,12 +61,21 @@ def heat_index(temp_f, relative_humidity):
           HEAT_INDEX_C8 * temp_f * relative_humidity**2 +
           HEAT_INDEX_C9 * temp_f**2 * relative_humidity**2)
 
-    return HI
+    if temp_f < 80 or relative_humidity < 40 or relative_humidity > 100:
+        return HI, False
+
+    return HI, True
 
 
 # Returns wind chill in Fahrenheit
 def wind_chill(temp_f, wind_speed_mph):
-    return 35.74+0.6215*(temp_f)-35.75*(wind_speed_mph)**0.16+0.4275*(temp_f)*(wind_speed_mph)**0.16
+    wc = 35.74+0.6215*(temp_f)-35.75*(wind_speed_mph)**0.16+0.4275*(temp_f)*(wind_speed_mph)**0.16
+
+    # Check if the input values are within the accepted range
+    if temp_f > 50 or wind_speed_mph < 3:
+        return wc, False
+
+    return wc, True
 
 
 # Returns frost point in Fahrenheit

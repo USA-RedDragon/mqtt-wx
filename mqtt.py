@@ -56,8 +56,18 @@ class MQTTClient:
             self.output_data["outTime"] = timegm(utc)
             self.output_data["dateTime"] = timegm(utc)
 
-            self.output_data["heatindex"] = round(convert_f_to_c(heat_index(data["temperature_F"], data["humidity"])), 1)
-            self.output_data["windchill"] = round(convert_f_to_c(wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))), 1)
+            hi, shouldHi = heat_index(data["temperature_F"], data["humidity"])
+            if shouldHi:
+                self.output_data["heatindex"] = round(convert_f_to_c(hi), 1)
+            else:
+                self.output_data.pop("heatindex", None)
+
+            wc, shouldWc = wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))
+            if shouldWc:
+                self.output_data["windchill"] = round(convert_f_to_c(wc), 1)
+            else:
+                self.output_data.pop("windchill", None)
+
             self.output_data["dewpoint"] = round(convert_f_to_c(dew_point(data["temperature_F"], data["humidity"])), 1)
             self.output_data["frostpoint"] = round(
                 convert_f_to_c(frost_point(
