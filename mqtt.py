@@ -51,6 +51,8 @@ class MQTTClient:
             self.output_data["outRSSI"] = data["rssi"]
             self.output_data["outSNR"] = data["snr"]
             self.output_data["outNoise"] = data["noise"]
+            self.output_data["luminosity"] = data["light_lux"]
+            self.output_data["radiation"] = data["light_lux"]/126.7
 
             utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
             self.output_data["outTime"] = timegm(utc)
