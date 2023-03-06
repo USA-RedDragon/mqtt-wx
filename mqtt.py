@@ -23,6 +23,8 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
 
+        self.rain = -1
+
     def start(self):
         self.client.connect(self.mqtt_host, 1883, 60)
         self.client.loop_forever()
@@ -46,7 +48,6 @@ class MQTTClient:
             self.output_data["windDir"] = data["wind_dir_deg"]
             self.output_data["windSpeed"] = data["wind_avg_m_s"]
             self.output_data["windGust"] = data["wind_max_m_s"]
-            self.output_data["rain"] = data["rain_mm"]
             self.output_data["UV"] = data["uv"]/10
             self.output_data["outRSSI"] = data["rssi"]
             self.output_data["outSNR"] = data["snr"]
@@ -69,6 +70,22 @@ class MQTTClient:
                     convert_c_to_k(self.output_data["outTemp"]),
                     convert_c_to_k(self.output_data["dewpoint"]))
                 ), 1)
+
+            # Initial rain, we can't calculate the rain rate
+            if self.rain == -1:
+                self.rain = data["rain_mm"]
+                self.output_data["rain"] = 0
+            # Rain has increased, calculate the rain rate
+            elif self.rain < data["rain_mm"]:
+                self.rain = data["rain_mm"]
+                self.output_data["rain"] = data["rain_mm"] - self.rain
+            # Rain has decreased, we had a reset
+            elif self.rain > data["rain_mm"]:
+                self.rain = data["rain_mm"]
+                self.output_data["rain"] = 0
+            # No change in rain, no rain
+            else:
+                self.output_data["rain"] = 0
         elif message.topic == self.input_topic_indoor:
             self.output_data["inTempBatteryStatus"] = 0 if data["battery_ok"] else 1
             self.output_data["inTemp"] = round(convert_f_to_c(data["temperature_F"]), 1)
