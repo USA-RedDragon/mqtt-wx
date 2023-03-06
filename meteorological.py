@@ -38,33 +38,38 @@ def dew_point(temp_f, relative_humidity):
     return dew_point_temp_f
 
 
-# Heat Index
+# Heat Index <https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml>
 HEAT_INDEX_C1 = -42.379
 HEAT_INDEX_C2 = 2.04901523
 HEAT_INDEX_C3 = 10.14333127
-HEAT_INDEX_C4 = -0.22475541
-HEAT_INDEX_C5 = -6.83783e-3
-HEAT_INDEX_C6 = -5.481717e-2
-HEAT_INDEX_C7 = 1.22874e-3
-HEAT_INDEX_C8 = 8.5282e-4
-HEAT_INDEX_C9 = -1.99e-6
+HEAT_INDEX_C4 = 0.22475541
+HEAT_INDEX_C5 = 0.00683783
+HEAT_INDEX_C6 = 0.05481717
+HEAT_INDEX_C7 = 0.00122874
+HEAT_INDEX_C8 = 0.00085282
+HEAT_INDEX_C9 = 0.00000199
 
 
 # Returns heat index in Fahrenheit
 def heat_index(temp_f, relative_humidity):
-    HI = (HEAT_INDEX_C1 + HEAT_INDEX_C2 * temp_f +
-          HEAT_INDEX_C3 * relative_humidity +
-          HEAT_INDEX_C4 * temp_f * relative_humidity +
-          HEAT_INDEX_C5 * temp_f**2 +
+    HI = (HEAT_INDEX_C1 +
+          HEAT_INDEX_C2 * temp_f +
+          HEAT_INDEX_C3 * relative_humidity -
+          HEAT_INDEX_C4 * temp_f * relative_humidity -
+          HEAT_INDEX_C5 * temp_f**2 -
           HEAT_INDEX_C6 * relative_humidity**2 +
           HEAT_INDEX_C7 * temp_f**2 * relative_humidity +
-          HEAT_INDEX_C8 * temp_f * relative_humidity**2 +
+          HEAT_INDEX_C8 * temp_f * relative_humidity**2 -
           HEAT_INDEX_C9 * temp_f**2 * relative_humidity**2)
 
-    if temp_f < 80 or relative_humidity < 40 or relative_humidity > 100:
-        return HI, False
+    if relative_humidity < 13 and 80 <= temp_f <= 112:
+        HI -= ((13 - relative_humidity) / 4) * math.sqrt((17 - abs(temp_f - 95)) / 17)
+    elif relative_humidity > 85 and 80 <= temp_f <= 87:
+        HI += ((relative_humidity - 85) / 10) * ((87 - temp_f) / 5)
+    else:
+        HI = 0.5 * (temp_f + 61.0 + ((temp_f-68.0)*1.2) + (relative_humidity*0.094))
 
-    return HI, True
+    return HI
 
 
 # Returns wind chill in Fahrenheit
@@ -73,9 +78,9 @@ def wind_chill(temp_f, wind_speed_mph):
 
     # Check if the input values are within the accepted range
     if temp_f > 50 or wind_speed_mph < 3:
-        return wc, False
+        return temp_f
 
-    return wc, True
+    return wc
 
 
 # Returns frost point in Fahrenheit
