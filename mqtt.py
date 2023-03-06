@@ -87,6 +87,12 @@ class MQTTClient:
             else:
                 self.output_data["rain"] = 0
         elif message.topic == self.input_topic_indoor:
+            # The indoor unit sometimes reports a negative temperature
+            # The indoor unit sometimes reports a humidity much lower than the previous reading
+            # Ignore these values
+            if data["temperature_F"] < 0 or data["humidity"] < 0:
+                return
+
             self.output_data["inTempBatteryStatus"] = 0 if data["battery_ok"] else 1
             self.output_data["inTemp"] = round(convert_f_to_c(data["temperature_F"]), 1)
             self.output_data["inHumidity"] = data["humidity"]
