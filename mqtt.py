@@ -73,16 +73,16 @@ class MQTTClient:
 
             # Initial rain, we can't calculate the rain rate
             if self.rain == -1:
-                self.rain = data["rain_mm"]
                 self.output_data["rain"] = 0
+                self.rain = data["rain_mm"]
             # Rain has increased, calculate the rain rate
             elif self.rain < data["rain_mm"]:
-                self.rain = data["rain_mm"]
                 self.output_data["rain"] = data["rain_mm"] - self.rain
+                self.rain = data["rain_mm"]
             # Rain has decreased, we had a reset
             elif self.rain > data["rain_mm"]:
-                self.rain = data["rain_mm"]
                 self.output_data["rain"] = 0
+                self.rain = data["rain_mm"]
             # No change in rain, no rain
             else:
                 self.output_data["rain"] = 0
