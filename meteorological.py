@@ -14,8 +14,6 @@ def dew_point(temp_f, relative_humidity):
     Returns:
         float: The dew point temperature in degrees Fahrenheit.
     """
-    import math
-
     # Convert temperature to Celsius
     dry_bulb_temp_c = (temp_f - 32) * 5 / 9
 
@@ -74,13 +72,7 @@ def heat_index(temp_f, relative_humidity):
 
 # Returns wind chill in Fahrenheit
 def wind_chill(temp_f, wind_speed_mph):
-    wc = 35.74+0.6215*(temp_f)-35.75*(wind_speed_mph)**0.16+0.4275*(temp_f)*(wind_speed_mph)**0.16
-
-    # Check if the input values are within the accepted range
-    if temp_f > 50 or wind_speed_mph < 3:
-        return temp_f
-
-    return wc
+    return 35.74+0.6215*(temp_f)-35.75*(wind_speed_mph)**0.16+0.4275*(temp_f)*(wind_speed_mph)**0.16
 
 
 # Returns frost point in Fahrenheit
