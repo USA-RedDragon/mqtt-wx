@@ -9,6 +9,7 @@ from meteorological import dew_point, heat_index, wind_chill, frost_point
 
 
 class MQTTClient:
+
     def __init__(self, mqtt_host, mqtt_username, mqtt_password, input_topic_weather, input_topic_indoor, output_topic):
         self.output_data = {}
 
@@ -61,9 +62,12 @@ class MQTTClient:
             self.output_data["heatindex"] = round(convert_f_to_c(
                 heat_index(data["temperature_F"], data["humidity"])
             ), 1)
-            self.output_data["windchill"] = round(convert_f_to_c(
-                wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))
-            ), 1)
+            wc, shouldWC = wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))
+            if shouldWC:
+                self.output_data["windchill"] = round(convert_f_to_c(wc), 1)
+            else:
+                if "windchill" in self.output_data:
+                    self.output_data.pop("windchill")
             self.output_data["dewpoint"] = round(convert_f_to_c(dew_point(data["temperature_F"], data["humidity"])), 1)
             self.output_data["frostpoint"] = round(
                 convert_f_to_c(frost_point(
