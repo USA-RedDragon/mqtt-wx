@@ -1,11 +1,15 @@
 from calendar import timegm
 import json
+import math
 import time
 
 import paho.mqtt.client as mqtt
 
 from units import convert_f_to_c, convert_c_to_k, convert_mps_to_mph
 from meteorological import dew_point, heat_index, wind_chill, frost_point, cloudbase
+
+TOPIC_PREFIX = "mqtt-wx"
+TOPIC_LIGHTNING_COUNT = f"{TOPIC_PREFIX}/lightning_count"
 
 
 class MQTTClient:
@@ -36,6 +40,8 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
 
+        self.total_lightning_strikes = -1
+
         self.rain = -1
 
     def start(self):
@@ -49,6 +55,12 @@ class MQTTClient:
     def on_message(self, client, userdata, message):
         # Get the message payload as a JSON string
         payload = message.payload.decode('utf-8')
+
+        if message.topic == TOPIC_LIGHTNING_COUNT:
+            if self.total_lightning_strikes == -1:
+                self.total_lightning_strikes = int(payload)
+                self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
+            return
 
         # Convert the JSON string to a Python dictionary
         data = json.loads(payload)
@@ -129,8 +141,15 @@ class MQTTClient:
                 if "lightning_distance" in self.output_data:
                     self.output_data.pop("lightning_distance")
                 return
-            self.output_data["lightning_distance"] = data["distance"]
+            if self.total_lightning_strikes == -1:
+                self.total_lightning_strikes = 0
+            self.total_lightning_strikes += 1
+            self.output_data["lightning_strike_count"] = self.total_lightning_strikes
+            self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
             self.output_data["lightning_energy"] = data["energy"]
+            # The AS3935 sensor reports the distance at arbitrary km intervals
+            # Fix that by using the energy value to calculate the distance
+            self.output_data["lightning_distance"] = round(2100 / math.sqrt(data["energy"]), 1)
 
         elif message.topic == self.input_topic_light:
             self.output_data["luminosity"] = data["lux"]
@@ -175,6 +194,7 @@ class MQTTClient:
     def on_connect(self, client, userdata, flags, rc):
         print("Connected with result code "+str(rc))
         # Subscribe to the input topics
+        client.subscribe(TOPIC_LIGHTNING_COUNT)
         client.subscribe(self.input_topic_weather)
         client.subscribe(self.input_topic_indoor)
         client.subscribe(self.input_topic_lightning)
