@@ -82,3 +82,7 @@ def frost_point(temp_k, dewpoint_k):
     return convert_k_to_f(
             dewpoint_k - temp_k + 2671.02 / ((2954.61 / temp_k) + 2.193665 * math.log(temp_k) - 13.3448)
         )
+
+
+def cloudbase(temp_c, dewpoint_c):
+    return (temp_c - dewpoint_c) / 2.4 * 1000

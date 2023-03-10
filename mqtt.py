@@ -5,7 +5,7 @@ import time
 import paho.mqtt.client as mqtt
 
 from units import convert_f_to_c, convert_c_to_k, convert_mps_to_mph
-from meteorological import dew_point, heat_index, wind_chill, frost_point
+from meteorological import dew_point, heat_index, wind_chill, frost_point, cloudbase
 
 
 class MQTTClient:
@@ -86,6 +86,9 @@ class MQTTClient:
                     convert_c_to_k(self.output_data["outTemp"]),
                     convert_c_to_k(self.output_data["dewpoint"]))
                 ), 1)
+
+            # We add a flat 9ft to the cloudbase calculation to account for the height of the sensor
+            self.output_data["cloudbase"] = round(cloudbase(self.output_data["outTemp"], self.output_data["dewpoint"]) + 2.7432, 1)
 
             # Initial rain, we can't calculate the rain rate
             if self.rain == -1:
