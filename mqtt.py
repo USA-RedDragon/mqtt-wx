@@ -144,27 +144,27 @@ class MQTTClient:
 
     def sanity_check(self, data):
         # Check that the values are within the expected range
-        if "outTemp" in data and data["outTemp"] < -50 or data["outTemp"] > 150:
+        if "outTemp" in data and (data["outTemp"] < -50 or data["outTemp"] > 150):
             return False
-        if "outHumidity" in data and data["outHumidity"] < 0 or data["outHumidity"] > 100:
+        if "outHumidity" in data and (data["outHumidity"] < 0 or data["outHumidity"] > 100):
             return False
-        if "windDir" in data and data["windDir"] < 0 or data["windDir"] > 360:
+        if "windDir" in data and (data["windDir"] < 0 or data["windDir"] > 360):
             return False
-        if "windSpeed" in data and data["windSpeed"] < 0 or data["windSpeed"] > 200:
+        if "windSpeed" in data and (data["windSpeed"] < 0 or data["windSpeed"] > 200):
             return False
-        if "windGust" in data and data["windGust"] < 0 or data["windGust"] > 200:
+        if "windGust" in data and (data["windGust"] < 0 or data["windGust"] > 200):
             return False
-        if "heatindex" in data and data["heatindex"] < -50 or data["heatindex"] > 150:
+        if "heatindex" in data and (data["heatindex"] < -50 or data["heatindex"] > 150):
             return False
-        if "windchill" in data and data["windchill"] < -50 or data["windchill"] > 150:
+        if "windchill" in data and (data["windchill"] < -50 or data["windchill"] > 150):
             return False
-        if "dewpoint" in data and data["dewpoint"] < -50 or data["dewpoint"] > 150:
+        if "dewpoint" in data and (data["dewpoint"] < -50 or data["dewpoint"] > 150):
             return False
-        if "frostpoint" in data and data["frostpoint"] < -50 or data["frostpoint"] > 150:
+        if "frostpoint" in data and (data["frostpoint"] < -50 or data["frostpoint"] > 150):
             return False
-        if "inTemp" in data and data["inTemp"] < -50 or data["inTemp"] > 150:
+        if "inTemp" in data and (data["inTemp"] < -50 or data["inTemp"] > 150):
             return False
-        if "inHumidity" in data and data["inHumidity"] < 0 or data["inHumidity"] > 100:
+        if "inHumidity" in data and (data["inHumidity"] < 0 or data["inHumidity"] > 100):
             return False
         return True
 
