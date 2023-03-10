@@ -100,7 +100,8 @@ class MQTTClient:
                 ), 1)
 
             # We add a flat 9ft to the cloudbase calculation to account for the height of the sensor
-            self.output_data["cloudbase"] = round(cloudbase(self.output_data["outTemp"], self.output_data["dewpoint"]) + 2.7432, 1)
+            # We also add the field elevation of 363.2 meters
+            self.output_data["cloudbase"] = round(cloudbase(self.output_data["outTemp"], self.output_data["dewpoint"]) + 2.7432 + 363.2, 1)
 
             # Initial rain, we can't calculate the rain rate
             if self.rain == -1:
