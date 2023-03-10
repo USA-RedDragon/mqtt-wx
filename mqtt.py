@@ -61,6 +61,7 @@ class MQTTClient:
             if self.total_lightning_strikes == -1:
                 self.total_lightning_strikes = int(payload)
                 self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
+            self.client.unsubscribe(TOPIC_LIGHTNING_COUNT)
             return
 
         # Convert the JSON string to a Python dictionary
@@ -162,7 +163,7 @@ class MQTTClient:
             self.output_data["barometer"] = round(data["pressure"], 2)
 
         if self.sanity_check(self.output_data):
-            self.output_data["dateTime"] = timegm(datetime.now().timetuple())
+            self.output_data["dateTime"] = time.mktime(datetime.now().astimezone().timetuple())
             # Publish the updated output data as a JSON string on the output topic
             client.publish(self.output_topic, json.dumps(self.output_data))
 
