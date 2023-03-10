@@ -1,4 +1,5 @@
 from calendar import timegm
+from datetime import datetime
 import json
 import math
 import time
@@ -82,7 +83,6 @@ class MQTTClient:
 
             utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
             self.output_data["outTime"] = timegm(utc)
-            self.output_data["dateTime"] = timegm(utc)
             self.output_data["heatindex"] = round(convert_f_to_c(
                 heat_index(data["temperature_F"], data["humidity"])
             ), 1)
@@ -162,6 +162,7 @@ class MQTTClient:
             self.output_data["barometer"] = round(data["pressure"], 2)
 
         if self.sanity_check(self.output_data):
+            self.output_data["dateTime"] = timegm(datetime.now().timetuple())
             # Publish the updated output data as a JSON string on the output topic
             client.publish(self.output_topic, json.dumps(self.output_data))
 
