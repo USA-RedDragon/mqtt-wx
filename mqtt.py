@@ -10,12 +10,24 @@ from meteorological import dew_point, heat_index, wind_chill, frost_point
 
 class MQTTClient:
 
-    def __init__(self, mqtt_host, mqtt_username, mqtt_password, input_topic_weather, input_topic_indoor, output_topic):
+    def __init__(self,
+                 mqtt_host,
+                 mqtt_username,
+                 mqtt_password,
+                 input_topic_weather,
+                 input_topic_indoor,
+                 input_topic_lightning,
+                 input_topic_light,
+                 input_topic_pressure,
+                 output_topic):
         self.output_data = {}
 
         self.mqtt_host = mqtt_host
         self.input_topic_weather = input_topic_weather
         self.input_topic_indoor = input_topic_indoor
+        self.input_topic_lightning = input_topic_lightning
+        self.input_topic_light = input_topic_light
+        self.input_topic_pressure = input_topic_pressure
         self.output_topic = output_topic
 
         self.client = mqtt.Client()
@@ -53,7 +65,7 @@ class MQTTClient:
             self.output_data["outRSSI"] = data["rssi"]
             self.output_data["outSNR"] = data["snr"]
             self.output_data["outNoise"] = data["noise"]
-            self.output_data["luminosity"] = data["light_lux"]
+            # self.output_data["luminosity"] = data["light_lux"]
             self.output_data["radiation"] = data["light_lux"]/126.7
 
             utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
@@ -98,7 +110,7 @@ class MQTTClient:
                 return
 
             self.output_data["inTempBatteryStatus"] = 0 if data["battery_ok"] else 1
-            self.output_data["inTemp"] = round(convert_f_to_c(data["temperature_F"]), 1)
+            # self.output_data["inTemp"] = round(convert_f_to_c(data["temperature_F"]), 1)
             self.output_data["inHumidity"] = data["humidity"]
             self.output_data["inRSSI"] = data["rssi"]
             self.output_data["inSNR"] = data["snr"]
@@ -106,6 +118,25 @@ class MQTTClient:
 
             utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
             self.output_data["inTime"] = timegm(utc)
+
+        elif message.topic == self.input_topic_lightning:
+            if data["presence"] is False:
+                if "lightning_energy" in self.output_data:
+                    self.output_data.pop("lightning_energy")
+                if "lightning_distance" in self.output_data:
+                    self.output_data.pop("lightning_distance")
+                return
+            self.output_data["lightning_distance"] = data["distance"]
+            self.output_data["lightning_energy"] = data["energy"]
+
+        elif message.topic == self.input_topic_light:
+            self.output_data["luminosity"] = data["lux"]
+
+        elif message.topic == self.input_topic_pressure:
+            if data["temperature"] < 0 or data["temperature"] > 120:
+                return
+            self.output_data["inTemp"] = round(data["temperature"], 1)
+            self.output_data["barometer"] = round(data["pressure"], 2)
 
         if self.sanity_check(self.output_data):
             # Publish the updated output data as a JSON string on the output topic
@@ -143,6 +174,9 @@ class MQTTClient:
         # Subscribe to the input topics
         client.subscribe(self.input_topic_weather)
         client.subscribe(self.input_topic_indoor)
+        client.subscribe(self.input_topic_lightning)
+        client.subscribe(self.input_topic_light)
+        client.subscribe(self.input_topic_pressure)
 
     # Define the on_disconnect function for the MQTT client
     def on_disconnect(self, client, userdata, rc):

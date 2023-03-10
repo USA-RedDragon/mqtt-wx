@@ -12,6 +12,9 @@ def main():
         parser.add_argument("mqtt_password", help="MQTT password")
         parser.add_argument("input_topic_weather", help="Input topic for weather station data")
         parser.add_argument("input_topic_indoor", help="Input topic for indoor sensor data")
+        parser.add_argument("input_topic_lightning", help="Input topic for lightning data")
+        parser.add_argument("input_topic_light", help="Input topic for light data")
+        parser.add_argument("input_topic_pressure", help="Input topic for pressure data")
         parser.add_argument("output_topic", help="Output topic for processed data")
         args = parser.parse_args()
 
@@ -27,6 +30,9 @@ def main():
             args.mqtt_password,
             args.input_topic_weather,
             args.input_topic_indoor,
+            args.input_topic_lightning,
+            args.input_topic_light,
+            args.input_topic_pressure,
             args.output_topic
         )
 
