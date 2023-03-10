@@ -2,6 +2,8 @@
 
 This is a little translation layer between rtl_443 and Home Assistant + WeeWX for a Cotech 36-7959 Weatherstation or other compatible models. Specifically, this is intended to take in two MQTT topics (one for the weather station itself and the other for the indoor module) and coalesce them into a single topic.
 
+Note: This is a form-fit translation layer between various weather-related sensors I personally have. I will not support use of this tool, but do provide it as an example to others who might want to do something similar.
+
 For WeeWX, this uses <https://github.com/USA-RedDragon/weewxMQTT> to read weather data from MQTT. An example `weewx.conf` entry can be found in `examples/weewx.conf`
 
 A Home Assistant example config can be found in `examples/home_assistant.yaml`.
