@@ -135,6 +135,7 @@ class MQTTClient:
 
             utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
             self.output_data["inTime"] = timegm(utc)
+            self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_lightning:
             if data["presence"] is False:
@@ -152,15 +153,18 @@ class MQTTClient:
             # The AS3935 sensor reports the distance at arbitrary km intervals
             # Fix that by using the energy value to calculate the distance
             self.output_data["lightning_distance"] = round(2100 / math.sqrt(data["energy"]), 1)
+            self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_light:
             self.output_data["luminosity"] = data["lux"]
+            self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_pressure:
             if data["temperature"] < 0 or data["temperature"] > 120:
                 return
             self.output_data["inTemp"] = round(data["temperature"], 1)
             self.output_data["barometer"] = round(data["pressure"], 2)
+            self.output_data["rain"] = 0
 
         if self.sanity_check(self.output_data):
             self.output_data["dateTime"] = time.mktime(datetime.now().astimezone().timetuple())
