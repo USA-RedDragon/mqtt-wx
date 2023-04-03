@@ -128,7 +128,7 @@ class MQTTClient:
             self.output_data["inTemp"] = round(data["temperature"], 1)
             self.output_data["inHumidity"] = data["humidity"]
             self.output_data["co2"] = data["eco2"]
-            self.output_data["tvoc"] = data["tvoc"]
+            self.output_data["tvoc"] = round(data["tvoc"] * 0.001, 2)
 
             self.output_data["rain"] = 0
 
