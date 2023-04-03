@@ -24,6 +24,7 @@ class MQTTClient:
                  input_topic_lightning,
                  input_topic_light,
                  input_topic_pressure,
+                 input_topic_particle_sensor,
                  output_topic):
         self.output_data = {}
 
@@ -33,6 +34,7 @@ class MQTTClient:
         self.input_topic_lightning = input_topic_lightning
         self.input_topic_light = input_topic_light
         self.input_topic_pressure = input_topic_pressure
+        self.input_topic_particle_sensor = input_topic_particle_sensor
         self.output_topic = output_topic
 
         self.client = mqtt.Client()
@@ -123,18 +125,20 @@ class MQTTClient:
             # The indoor unit sometimes reports a negative temperature
             # The indoor unit sometimes reports a humidity much lower than the previous reading
             # Ignore these values
-            if data["temperature_F"] < 0 or data["humidity"] < 0:
+            if data["temperature"] < 0 or data["temperature"] > 50 or data["humidity"] < 0 or data["humidity"] > 100:
                 return
 
-            self.output_data["inTempBatteryStatus"] = 0 if data["battery_ok"] else 1
-            # self.output_data["inTemp"] = round(convert_f_to_c(data["temperature_F"]), 1)
+            self.output_data["inTemp"] = round(data["temperature"], 1)
             self.output_data["inHumidity"] = data["humidity"]
-            self.output_data["inRSSI"] = data["rssi"]
-            self.output_data["inSNR"] = data["snr"]
-            self.output_data["inNoise"] = data["noise"]
+            self.output_data["co2"] = data["eco2"]
+            self.output_data["tvoc"] = data["tvoc"]
 
-            utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
-            self.output_data["inTime"] = timegm(utc)
+            self.output_data["rain"] = 0
+
+        elif message.topic == self.input_topic_particle_sensor:
+            self.output_data["pm1_0"] = round(data["pm10"], 2)
+            self.output_data["pm2_5"] = round(data["pm25"], 2)
+
             self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_lightning:
@@ -160,9 +164,7 @@ class MQTTClient:
             self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_pressure:
-            if data["temperature"] < 0 or data["temperature"] > 120:
-                return
-            self.output_data["inTemp"] = round(data["temperature"], 1)
+            # self.output_data["outTemp"] = round(data["temperature"], 1)
             self.output_data["barometer"] = round(data["pressure"], 2)
             self.output_data["rain"] = 0
 
@@ -207,6 +209,7 @@ class MQTTClient:
         client.subscribe(self.input_topic_lightning)
         client.subscribe(self.input_topic_light)
         client.subscribe(self.input_topic_pressure)
+        client.subscribe(self.input_topic_particle_sensor)
 
     # Define the on_disconnect function for the MQTT client
     def on_disconnect(self, client, userdata, rc):

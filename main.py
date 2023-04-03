@@ -15,6 +15,7 @@ def main():
         parser.add_argument("input_topic_lightning", help="Input topic for lightning data")
         parser.add_argument("input_topic_light", help="Input topic for light data")
         parser.add_argument("input_topic_pressure", help="Input topic for pressure data")
+        parser.add_argument("input_topic_particle_sensor", help="Input topic for particle sensor data")
         parser.add_argument("output_topic", help="Output topic for processed data")
         args = parser.parse_args()
 
@@ -33,6 +34,7 @@ def main():
             args.input_topic_lightning,
             args.input_topic_light,
             args.input_topic_pressure,
+            args.input_topic_particle_sensor,
             args.output_topic
         )
 
