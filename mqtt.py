@@ -1,4 +1,3 @@
-from calendar import timegm
 from datetime import datetime
 import json
 import math
@@ -84,8 +83,6 @@ class MQTTClient:
             # self.output_data["luminosity"] = data["light_lux"]
             self.output_data["radiation"] = data["light_lux"]/126.7
 
-            utc = time.strptime(data["time"], "%Y-%m-%d %H:%M:%S")
-            self.output_data["outTime"] = timegm(utc)
             self.output_data["heatindex"] = round(convert_f_to_c(
                 heat_index(data["temperature_F"], data["humidity"])
             ), 1)
