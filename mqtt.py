@@ -26,6 +26,7 @@ class MQTTClient:
                  input_topic_particle_sensor,
                  output_topic):
         self.output_data = {}
+        self.previous_output_data = {}
 
         self.mqtt_host = mqtt_host
         self.input_topic_weather = input_topic_weather
@@ -57,6 +58,7 @@ class MQTTClient:
     def on_message(self, client, userdata, message):
         # Get the message payload as a JSON string
         payload = message.payload.decode('utf-8')
+        self.previous_output_data = self.output_data
 
         if message.topic == TOPIC_LIGHTNING_COUNT:
             if self.total_lightning_strikes == -1:
@@ -165,16 +167,16 @@ class MQTTClient:
             self.output_data["barometer"] = round(data["pressure"], 2)
             self.output_data["rain"] = 0
 
-        if self.sanity_check(self.output_data):
+        if self.sanity_check(self.output_data, self.previous_output_data):
             self.output_data["dateTime"] = time.mktime(datetime.now().astimezone().timetuple())
             # Publish the updated output data as a JSON string on the output topic
             client.publish(self.output_topic, json.dumps(self.output_data))
 
-    def sanity_check(self, data):
+    def sanity_check(self, data, prev_data):
         # Check that the values are within the expected range
-        if "outTemp" in data and (data["outTemp"] < -50 or data["outTemp"] > 150):
+        if "outTemp" in data and (data["outTemp"] < -50 or data["outTemp"] > 150 or abs(data["outTemp"]-data["outTemp"]) > 30):
             return False
-        if "outHumidity" in data and (data["outHumidity"] < 0 or data["outHumidity"] > 100):
+        if "outHumidity" in data and (data["outHumidity"] < 0 or data["outHumidity"] > 100 or abs(data["outHumidity"]-data["outHumidity"]) > 30):
             return False
         if "windDir" in data and (data["windDir"] < 0 or data["windDir"] > 360):
             return False
@@ -190,9 +192,9 @@ class MQTTClient:
             return False
         if "frostpoint" in data and (data["frostpoint"] < -50 or data["frostpoint"] > 150):
             return False
-        if "inTemp" in data and (data["inTemp"] < -50 or data["inTemp"] > 150):
+        if "inTemp" in data and (data["inTemp"] < -50 or data["inTemp"] > 150 or abs(data["inTemp"]-data["inTemp"]) > 30):
             return False
-        if "inHumidity" in data and (data["inHumidity"] < 0 or data["inHumidity"] > 100):
+        if "inHumidity" in data and (data["inHumidity"] < 0 or data["inHumidity"] > 100 or abs(data["inHumidity"]-data["inHumidity"]) > 30):
             return False
         return True
 
