@@ -1,5 +1,7 @@
 import argparse
 import signal
+import sys
+import traceback
 
 from mqtt import MQTTClient
 from config import get_config
@@ -41,7 +43,8 @@ def main():
 
         client.start()
     except Exception as e:
-        print(f"Unhandled error: {e}")
+        print(e)
+        traceback.print_exception(*sys.exc_info())
         exit(1)
 
 
