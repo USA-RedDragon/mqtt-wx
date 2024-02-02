@@ -154,9 +154,9 @@ class MQTTClient:
             self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_particle_sensor:
-            if "pm10" in data:
+            if "pm10" in data and data["pm10"] is not None:
                 self.output_data["pm1_0"] = round(data["pm10"], 2)
-            if "pm25" in data:
+            if "pm25" in data and data["pm25"] is not None:
                 self.output_data["pm2_5"] = round(data["pm25"], 2)
 
             self.output_data["rain"] = 0
