@@ -37,7 +37,7 @@ class MQTTClient:
         self.input_topic_particle_sensor = input_topic_particle_sensor
         self.output_topic = output_topic
 
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.username_pw_set(mqtt_username, mqtt_password)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -223,8 +223,8 @@ class MQTTClient:
         return True
 
     # Define the on_connect function for the MQTT client
-    def on_connect(self, client, userdata, flags, rc):
-        print("Connected with result code "+str(rc))
+    def on_connect(self, client, userdata, flags, reason_code, properties):
+        print("Connected with result code "+str(reason_code))
         # Subscribe to the input topics
         client.subscribe(TOPIC_LIGHTNING_COUNT)
         client.subscribe(self.input_topic_weather)
@@ -235,6 +235,6 @@ class MQTTClient:
         client.subscribe(self.input_topic_particle_sensor)
 
     # Define the on_disconnect function for the MQTT client
-    def on_disconnect(self, client, userdata, rc):
-        if rc != 0:
+    def on_disconnect(self, client, userdata, flags, reason_code, properties):
+        if reason_code != 0:
             raise Exception("MQTT disconnection")
