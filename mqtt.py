@@ -72,57 +72,57 @@ class MQTTClient:
 
         # Determine which input topic the message came from and update the output data accordingly
         if message.topic == self.input_topic_weather:
-            if "battery_ok" in data:
+            if "battery_ok" in data and data["battery_ok"] is not None:
                 self.output_data["outTempBatteryStatus"] = 0 if data["battery_ok"] else 1
-            if "temperature_F" in data:
+            if "temperature_F" in data and data["temperature_F"] is not None:
                 self.output_data["outTemp"] = round(convert_f_to_c(data["temperature_F"]), 1)
-            if "humidity" in data:
+            if "humidity" in data and data["humidity"] is not None:
                 self.output_data["outHumidity"] = data["humidity"]
-            if "wind_dir_deg" in data:
+            if "wind_dir_deg" in data and data["wind_dir_deg"] is not None:
                 self.output_data["windDir"] = data["wind_dir_deg"]
-            if "wind_avg_m_s" in data:
+            if "wind_avg_m_s" in data and data["wind_avg_m_s"] is not None:
                 self.output_data["windSpeed"] = data["wind_avg_m_s"]
-            if "wind_max_m_s" in data:
+            if "wind_max_m_s" in data and data["wind_max_m_s"] is not None:
                 self.output_data["windGust"] = data["wind_max_m_s"]
-            if "uv" in data:
+            if "uv" in data and data["uv"] is not None:
                 self.output_data["UV"] = data["uv"]/10
-            if "rssi" in data:
+            if "rssi" in data and data["rssi"] is not None:
                 self.output_data["outRSSI"] = data["rssi"]
-            if "snr" in data:
+            if "snr" in data and data["snr"] is not None:
                 self.output_data["outSNR"] = data["snr"]
-            if "noise" in data:
+            if "noise" in data and data["noise"] is not None:
                 self.output_data["outNoise"] = data["noise"]
             # self.output_data["luminosity"] = data["light_lux"]
-            if "light_lux" in data:
+            if "light_lux" in data and data["light_lux"] is not None:
                 self.output_data["radiation"] = data["light_lux"]/126.7
 
-            if "humidity" in data and "temperature_F" in data:
+            if "humidity" in data and "temperature_F" in data and data["humidity"] is not None and data["temperature_F"] is not None:
                 self.output_data["heatindex"] = round(convert_f_to_c(
                     heat_index(data["temperature_F"], data["humidity"])
                 ), 1)
-            if "wind_avg_m_s" in data and "temperature_F" in data:
+            if "wind_avg_m_s" in data and "temperature_F" in data and data["wind_avg_m_s"] is not None and data["temperature_F"] is not None:
                 wc, shouldWC = wind_chill(data["temperature_F"], convert_mps_to_mph(data["wind_avg_m_s"]))
                 if shouldWC:
                     self.output_data["windchill"] = round(convert_f_to_c(wc), 1)
                 else:
                     if "windchill" in self.output_data:
                         self.output_data.pop("windchill")
-            if "temperature_F" in data and "humidity" in data:
+            if "temperature_F" in data and "humidity" in data and data["temperature_F"] is not None and data["humidity"] is not None:
                 self.output_data["dewpoint"] = round(convert_f_to_c(dew_point(data["temperature_F"], data["humidity"])), 1)
-            if "dewpoint" in self.output_data and "outTemp" in self.output_data:
+            if "dewpoint" in self.output_data and "outTemp" in self.output_data and data["dewpoint"] is not None and data["outTemp"] is not None:
                 self.output_data["frostpoint"] = round(
                     convert_f_to_c(frost_point(
                         convert_c_to_k(self.output_data["outTemp"]),
                         convert_c_to_k(self.output_data["dewpoint"]))
                     ), 1)
 
-            if "outTemp" in self.output_data and "dewpoint" in self.output_data:
+            if "outTemp" in self.output_data and "dewpoint" in self.output_data and self.output_data["outTemp"] is not None and self.output_data["dewpoint"] is not None:
                 # We add a flat 9ft to the cloudbase calculation to account for the height of the sensor
                 # We also add the field elevation of 363.2 meters
                 self.output_data["cloudbase"] = round(cloudbase(self.output_data["outTemp"], self.output_data["dewpoint"]) + 2.7432 + 363.2, 1)
 
             # Initial rain, we can't calculate the rain rate
-            if "rain_mm" in data:
+            if "rain_mm" in data and data["rain_mm"] is not None:
                 if self.rain == -1:
                     self.output_data["rain"] = 0
                     self.rain = data["rain_mm"]
@@ -146,9 +146,9 @@ class MQTTClient:
 
             self.output_data["inTemp"] = round(data["temperature"], 1)
             self.output_data["inHumidity"] = data["humidity"]
-            if "eco2" in data:
+            if "eco2" in data and data["eco2"] is not None:
                 self.output_data["co2"] = data["eco2"]
-            if "tvoc" in data:
+            if "tvoc" in data and data["tvoc"] is not None:
                 self.output_data["tvoc"] = round(data["tvoc"] * 0.001, 4)
 
             self.output_data["rain"] = 0
@@ -173,7 +173,7 @@ class MQTTClient:
             self.total_lightning_strikes += 1
             self.output_data["lightning_strike_count"] = self.total_lightning_strikes
             self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
-            if "energy" in data:
+            if "energy" in data and data["energy"] is not None:
                 self.output_data["lightning_energy"] = data["energy"]
                 # The AS3935 sensor reports the distance at arbitrary km intervals
                 # Fix that by using the energy value to calculate the distance
@@ -181,13 +181,13 @@ class MQTTClient:
             self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_light:
-            if "lux" in data:
+            if "lux" in data and data["lux"] is not None:
                 self.output_data["luminosity"] = data["lux"]
             self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_pressure:
             # self.output_data["outTemp"] = round(data["temperature"], 1)
-            if "pressure" in data:
+            if "pressure" in data and data["pressure"] is not None:
                 self.output_data["barometer"] = round(data["pressure"], 2)
             self.output_data["rain"] = 0
 
