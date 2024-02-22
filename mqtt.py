@@ -109,7 +109,7 @@ class MQTTClient:
                         self.output_data.pop("windchill")
             if "temperature_F" in data and "humidity" in data and data["temperature_F"] is not None and data["humidity"] is not None:
                 self.output_data["dewpoint"] = round(convert_f_to_c(dew_point(data["temperature_F"], data["humidity"])), 1)
-            if "dewpoint" in self.output_data and "outTemp" in self.output_data and data["dewpoint"] is not None and data["outTemp"] is not None:
+            if "dewpoint" in self.output_data and "outTemp" in self.output_data and self.output_data["dewpoint"] is not None and self.output_data["outTemp"] is not None:
                 self.output_data["frostpoint"] = round(
                     convert_f_to_c(frost_point(
                         convert_c_to_k(self.output_data["outTemp"]),
