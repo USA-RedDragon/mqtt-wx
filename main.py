@@ -19,6 +19,7 @@ def main():
         parser.add_argument("-input_topic_light", help="Input topic for light data", default=get_config().input_topic_light, required=False)
         parser.add_argument("-input_topic_pressure", help="Input topic for pressure data", default=get_config().input_topic_pressure, required=False)
         parser.add_argument("-input_topic_particle_sensor", help="Input topic for particle sensor data", default=get_config().input_topic_particle_sensor, required=False)
+        parser.add_argument("-input_topic_co2", help="Input topic for CO2 sensor data", default=get_config().input_topic_co2, required=False)
         parser.add_argument("-output_topic", help="Output topic for processed data", default=get_config().output_topic, required=False)
         args = parser.parse_args()
 
@@ -38,6 +39,7 @@ def main():
             args.input_topic_light,
             args.input_topic_pressure,
             args.input_topic_particle_sensor,
+            args.input_topic_co2,
             args.output_topic
         )
 

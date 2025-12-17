@@ -24,12 +24,14 @@ class MQTTClient:
                  input_topic_light,
                  input_topic_pressure,
                  input_topic_particle_sensor,
+                 input_topic_co2,
                  output_topic):
         self.output_data = {}
         self.previous_output_data = {}
 
         self.mqtt_host = mqtt_host
         self.input_topic_weather = input_topic_weather
+        self.input_topic_co2 = input_topic_co2
         self.input_topic_indoor = input_topic_indoor
         self.input_topic_lightning = input_topic_lightning
         self.input_topic_light = input_topic_light
@@ -146,8 +148,6 @@ class MQTTClient:
 
             self.output_data["inTemp"] = round(data["temperature"], 1)
             self.output_data["inHumidity"] = data["humidity"]
-            if "eco2" in data and data["eco2"] is not None:
-                self.output_data["co2"] = data["eco2"]
             if "tvoc" in data and data["tvoc"] is not None:
                 self.output_data["tvoc"] = round(data["tvoc"] * 0.001, 4)
 
@@ -190,6 +190,10 @@ class MQTTClient:
             if "pressure" in data and data["pressure"] is not None:
                 self.output_data["barometer"] = round(data["pressure"], 2)
             self.output_data["rain"] = 0
+
+        elif message.topic == self.input_topic_co2:
+            if "co2" in data and data["co2"] is not None:
+                self.output_data["co2"] = data["co2"]
 
         if self.sanity_check(self.output_data, self.previous_output_data):
             self.output_data["dateTime"] = time.mktime(datetime.now().astimezone().timetuple())

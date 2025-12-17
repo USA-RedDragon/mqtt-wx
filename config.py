@@ -11,6 +11,7 @@ class Config:
         self.input_topic_light = os.environ.get("INPUT_TOPIC_LIGHT") or "light"
         self.input_topic_pressure = os.environ.get("INPUT_TOPIC_PRESSURE") or "pressure"
         self.input_topic_particle_sensor = os.environ.get("INPUT_TOPIC_PARTICLE_SENSOR") or "particle_sensor"
+        self.input_topic_co2 = os.environ.get("INPUT_TOPIC_CO2") or "co2"
         self.output_topic = os.environ.get("OUTPUT_TOPIC") or "processed"
 
 _config = None
