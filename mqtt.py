@@ -237,6 +237,7 @@ class MQTTClient:
         client.subscribe(self.input_topic_light)
         client.subscribe(self.input_topic_pressure)
         client.subscribe(self.input_topic_particle_sensor)
+        client.subscribe(self.input_topic_co2)
 
     # Define the on_disconnect function for the MQTT client
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
