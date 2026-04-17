@@ -1,3 +1,4 @@
+import collections
 from datetime import datetime
 import json
 import math
@@ -10,6 +11,9 @@ from meteorological import dew_point, heat_index, wind_chill, frost_point, cloud
 
 TOPIC_PREFIX = "mqtt-wx"
 TOPIC_LIGHTNING_COUNT = f"{TOPIC_PREFIX}/lightning_count"
+TOPIC_RAIN_24H = f"{TOPIC_PREFIX}/rain_24h"
+
+RAIN_WINDOW_SECONDS = 24 * 60 * 60
 
 
 class MQTTClient:
@@ -48,6 +52,7 @@ class MQTTClient:
         self.total_lightning_strikes = -1
 
         self.rain = -1
+        self.rain_events = collections.deque()
 
     def start(self):
         self.client.connect(self.mqtt_host, 1883, 60)
@@ -67,6 +72,20 @@ class MQTTClient:
                 self.total_lightning_strikes = int(payload)
                 self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
             self.client.unsubscribe(TOPIC_LIGHTNING_COUNT)
+            return
+
+        if message.topic == TOPIC_RAIN_24H:
+            try:
+                events = json.loads(payload)
+                now = time.time()
+                self.rain_events = collections.deque(
+                    (ts, delta) for ts, delta in events
+                    if now - ts < RAIN_WINDOW_SECONDS
+                )
+                self.output_data["rain"] = round(sum(d for _, d in self.rain_events), 2)
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+            self.client.unsubscribe(TOPIC_RAIN_24H)
             return
 
         # Convert the JSON string to a Python dictionary
@@ -123,22 +142,30 @@ class MQTTClient:
                 # We also add the field elevation of 363.2 meters
                 self.output_data["cloudbase"] = round(cloudbase(self.output_data["outTemp"], self.output_data["dewpoint"]) + 2.7432 + 363.2, 1)
 
-            # Initial rain, we can't calculate the rain rate
+            # Accumulate 24h rolling rain total
             if "rain_mm" in data and data["rain_mm"] is not None:
+                now = time.time()
                 if self.rain == -1:
-                    self.output_data["rain"] = 0
+                    # First reading — establish baseline, no delta yet
                     self.rain = data["rain_mm"]
-                # Rain has increased, calculate the rain rate
                 elif self.rain < data["rain_mm"]:
-                    self.output_data["rain"] = data["rain_mm"] - self.rain
+                    # Rain increased — record the delta
+                    delta = data["rain_mm"] - self.rain
                     self.rain = data["rain_mm"]
-                # Rain has decreased, we had a reset
+                    self.rain_events.append((now, delta))
                 elif self.rain > data["rain_mm"]:
-                    self.output_data["rain"] = 0
+                    # Rain counter reset — re-establish baseline
                     self.rain = data["rain_mm"]
-                # No change in rain, no rain
-                else:
-                    self.output_data["rain"] = 0
+                # else: no change, nothing to record
+
+                # Prune events older than 24h
+                while self.rain_events and now - self.rain_events[0][0] >= RAIN_WINDOW_SECONDS:
+                    self.rain_events.popleft()
+
+                self.output_data["rain"] = round(sum(d for _, d in self.rain_events), 2)
+
+                # Persist rain events to retained MQTT topic
+                client.publish(TOPIC_RAIN_24H, json.dumps(list(self.rain_events)), retain=True)
         elif message.topic == self.input_topic_indoor:
             # The indoor unit sometimes reports a negative temperature
             # The indoor unit sometimes reports a humidity much lower than the previous reading
@@ -151,15 +178,11 @@ class MQTTClient:
             if "tvoc" in data and data["tvoc"] is not None:
                 self.output_data["tvoc"] = round(data["tvoc"] * 0.001, 4)
 
-            self.output_data["rain"] = 0
-
         elif message.topic == self.input_topic_particle_sensor:
             if "pm10" in data and data["pm10"] is not None:
                 self.output_data["pm1_0"] = round(data["pm10"], 2)
             if "pm25" in data and data["pm25"] is not None:
                 self.output_data["pm2_5"] = round(data["pm25"], 2)
-
-            self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_lightning:
             if "presence" in data and data["presence"] is False:
@@ -178,18 +201,15 @@ class MQTTClient:
                 # The AS3935 sensor reports the distance at arbitrary km intervals
                 # Fix that by using the energy value to calculate the distance
                 self.output_data["lightning_distance"] = round(2100 / math.sqrt(data["energy"]), 1)
-            self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_light:
             if "lux" in data and data["lux"] is not None:
                 self.output_data["luminosity"] = data["lux"]
-            self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_pressure:
             # self.output_data["outTemp"] = round(data["temperature"], 1)
             if "pressure" in data and data["pressure"] is not None:
                 self.output_data["barometer"] = round(data["pressure"], 2)
-            self.output_data["rain"] = 0
 
         elif message.topic == self.input_topic_co2:
             if "co2" in data and data["co2"] is not None:
@@ -231,6 +251,7 @@ class MQTTClient:
         print("Connected with result code "+str(reason_code))
         # Subscribe to the input topics
         client.subscribe(TOPIC_LIGHTNING_COUNT)
+        client.subscribe(TOPIC_RAIN_24H)
         client.subscribe(self.input_topic_weather)
         client.subscribe(self.input_topic_indoor)
         client.subscribe(self.input_topic_lightning)
