@@ -222,9 +222,9 @@ class MQTTClient:
 
     def sanity_check(self, data, prev_data):
         # Check that the values are within the expected range
-        if "outTemp" in data and (data["outTemp"] < -50 or data["outTemp"] > 150 or abs(data["outTemp"]-data["outTemp"]) > 30):
+        if "outTemp" in data and (data["outTemp"] < -50 or data["outTemp"] > 150 or abs(data["outTemp"]-prev_data.get("outTemp", data["outTemp"])) > 30):
             return False
-        if "outHumidity" in data and (data["outHumidity"] < 0 or data["outHumidity"] > 100 or abs(data["outHumidity"]-data["outHumidity"]) > 30):
+        if "outHumidity" in data and (data["outHumidity"] < 0 or data["outHumidity"] > 100 or abs(data["outHumidity"]-prev_data.get("outHumidity", data["outHumidity"])) > 30):
             return False
         if "windDir" in data and (data["windDir"] < 0 or data["windDir"] > 360):
             return False
@@ -240,9 +240,9 @@ class MQTTClient:
             return False
         if "frostpoint" in data and (data["frostpoint"] < -50 or data["frostpoint"] > 150):
             return False
-        if "inTemp" in data and (data["inTemp"] < -50 or data["inTemp"] > 150 or abs(data["inTemp"]-data["inTemp"]) > 30):
+        if "inTemp" in data and (data["inTemp"] < -50 or data["inTemp"] > 150 or abs(data["inTemp"]-prev_data.get("inTemp", data["inTemp"])) > 30):
             return False
-        if "inHumidity" in data and (data["inHumidity"] < 0 or data["inHumidity"] > 100 or abs(data["inHumidity"]-data["inHumidity"]) > 30):
+        if "inHumidity" in data and (data["inHumidity"] < 0 or data["inHumidity"] > 100 or abs(data["inHumidity"]-prev_data.get("inHumidity", data["inHumidity"])) > 30):
             return False
         return True
 
