@@ -3,8 +3,8 @@ def convert_f_to_c(temp_f):
     return (temp_f - 32) * 5/9
 
 
-def convert_c_to_k(temp_f):
-    return temp_f + 273.15
+def convert_c_to_k(temp_c):
+    return temp_c + 273.15
 
 
 def convert_k_to_f(temp_k):
