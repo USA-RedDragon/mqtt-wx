@@ -65,7 +65,7 @@ class MQTTClient:
     def on_message(self, client, userdata, message):
         # Get the message payload as a JSON string
         payload = message.payload.decode('utf-8')
-        self.previous_output_data = self.output_data
+        self.previous_output_data = self.output_data.copy()
 
         if message.topic == TOPIC_LIGHTNING_COUNT:
             if self.total_lightning_strikes == -1:
