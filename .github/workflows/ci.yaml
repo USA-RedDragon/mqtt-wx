@@ -14,6 +14,6 @@ jobs:
       contents: read
       packages: write
       security-events: write
-    uses: USA-RedDragon/reusable-actions/.github/workflows/docker-ci.yaml@764c7aee28d4145c8b84d8c550727a6924a96c7e # v2.0.25
+    uses: USA-RedDragon/reusable-actions/.github/workflows/docker-ci.yaml@86546533e7fe42b748a54ea123c6aa4e3e812241 # v2.0.31
     with:
       push: ${{ github.event_name != 'pull_request' }}
