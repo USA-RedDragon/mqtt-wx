@@ -2,6 +2,8 @@ import collections
 from datetime import datetime
 import json
 import math
+import os
+import threading
 import time
 
 import paho.mqtt.client as mqtt
@@ -14,6 +16,7 @@ TOPIC_LIGHTNING_COUNT = f"{TOPIC_PREFIX}/lightning_count"
 TOPIC_RAIN_24H = f"{TOPIC_PREFIX}/rain_24h"
 
 RAIN_WINDOW_SECONDS = 24 * 60 * 60
+MIGRATION_TIMEOUT_SECONDS = 5
 
 
 class MQTTClient:
@@ -29,7 +32,8 @@ class MQTTClient:
                  input_topic_pressure,
                  input_topic_particle_sensor,
                  input_topic_co2,
-                 output_topic):
+                 output_topic,
+                 state_file):
         self.output_data = {}
         self.previous_output_data = {}
 
@@ -49,10 +53,103 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
 
-        self.total_lightning_strikes = -1
+        self.total_lightning_strikes = 0
 
         self.rain = -1
         self.rain_events = collections.deque()
+
+        self.state_file = state_file
+        self.state_lock = threading.Lock()
+        self.migrating = False
+        self.migrated_topics = set()
+        self.migration_timer = None
+        self.load_state()
+
+    def load_state(self):
+        try:
+            with open(self.state_file) as f:
+                state = json.load(f)
+        except FileNotFoundError:
+            if not os.access(os.path.dirname(os.path.abspath(self.state_file)), os.W_OK):
+                raise PermissionError(f"State file directory for {self.state_file} is not writable")
+            print(f"No state file at {self.state_file}, migrating from retained topics")
+            self.migrating = True
+            return
+        self.rain_events = collections.deque((ts, delta) for ts, delta in state.get("rain_events", []))
+        self.rain = state.get("rain_mm", -1)
+        self.total_lightning_strikes = state.get("lightning_count", 0)
+        self.prune_rain_events(time.time())
+        self.output_data["rain"] = self.rain_total()
+
+    def save_state(self):
+        state = {
+            "rain_events": list(self.rain_events),
+            "rain_mm": self.rain,
+            "lightning_count": self.total_lightning_strikes,
+        }
+        tmp_file = f"{self.state_file}.tmp"
+        with open(tmp_file, "w") as f:
+            json.dump(state, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_file, self.state_file)
+        dir_fd = os.open(os.path.dirname(os.path.abspath(self.state_file)), os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+
+    def publish_state(self):
+        self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
+        self.client.publish(TOPIC_RAIN_24H, json.dumps(list(self.rain_events)), retain=True)
+
+    def prune_rain_events(self, now):
+        pruned = False
+        while self.rain_events and now - self.rain_events[0][0] >= RAIN_WINDOW_SECONDS:
+            self.rain_events.popleft()
+            pruned = True
+        return pruned
+
+    def rain_total(self):
+        return round(sum(d for _, d in self.rain_events), 2)
+
+    def migrate_message(self, topic, payload):
+        if topic == TOPIC_LIGHTNING_COUNT:
+            try:
+                self.total_lightning_strikes = max(self.total_lightning_strikes, int(payload))
+            except ValueError:
+                pass
+        elif topic == TOPIC_RAIN_24H:
+            try:
+                self.rain_events = collections.deque((ts, delta) for ts, delta in json.loads(payload))
+                self.prune_rain_events(time.time())
+                self.output_data["rain"] = self.rain_total()
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+        self.migrated_topics.add(topic)
+
+    def finish_migration(self):
+        with self.state_lock:
+            if not self.migrating:
+                return
+            self.migrating = False
+            if self.migration_timer is not None:
+                self.migration_timer.cancel()
+            self.save_state()
+        print(f"Migrated state to {self.state_file}: {self.total_lightning_strikes} lightning strikes, {len(self.rain_events)} rain events")
+        self.client.unsubscribe(TOPIC_LIGHTNING_COUNT)
+        self.client.unsubscribe(TOPIC_RAIN_24H)
+        self.publish_state()
+        self.subscribe_inputs(self.client)
+
+    def subscribe_inputs(self, client):
+        client.subscribe(self.input_topic_weather)
+        client.subscribe(self.input_topic_indoor)
+        client.subscribe(self.input_topic_lightning)
+        client.subscribe(self.input_topic_light)
+        client.subscribe(self.input_topic_pressure)
+        client.subscribe(self.input_topic_particle_sensor)
+        client.subscribe(self.input_topic_co2)
 
     def start(self):
         self.client.connect(self.mqtt_host, 1883, 60)
@@ -67,25 +164,17 @@ class MQTTClient:
         payload = message.payload.decode('utf-8')
         self.previous_output_data = self.output_data.copy()
 
-        if message.topic == TOPIC_LIGHTNING_COUNT:
-            if self.total_lightning_strikes == -1:
-                self.total_lightning_strikes = int(payload)
-                self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
-            self.client.unsubscribe(TOPIC_LIGHTNING_COUNT)
+        if message.topic in (TOPIC_LIGHTNING_COUNT, TOPIC_RAIN_24H):
+            with self.state_lock:
+                if not self.migrating or not message.retain:
+                    return
+                self.migrate_message(message.topic, payload)
+                migrated = len(self.migrated_topics) == 2
+            if migrated:
+                self.finish_migration()
             return
 
-        if message.topic == TOPIC_RAIN_24H:
-            try:
-                events = json.loads(payload)
-                now = time.time()
-                self.rain_events = collections.deque(
-                    (ts, delta) for ts, delta in events
-                    if now - ts < RAIN_WINDOW_SECONDS
-                )
-                self.output_data["rain"] = round(sum(d for _, d in self.rain_events), 2)
-            except (json.JSONDecodeError, TypeError, ValueError):
-                pass
-            self.client.unsubscribe(TOPIC_RAIN_24H)
+        if self.migrating:
             return
 
         # Convert the JSON string to a Python dictionary
@@ -145,6 +234,7 @@ class MQTTClient:
             # Accumulate 24h rolling rain total
             if "rain_mm" in data and data["rain_mm"] is not None:
                 now = time.time()
+                previous_rain = self.rain
                 if self.rain == -1:
                     # First reading — establish baseline, no delta yet
                     self.rain = data["rain_mm"]
@@ -159,13 +249,13 @@ class MQTTClient:
                 # else: no change, nothing to record
 
                 # Prune events older than 24h
-                while self.rain_events and now - self.rain_events[0][0] >= RAIN_WINDOW_SECONDS:
-                    self.rain_events.popleft()
+                pruned = self.prune_rain_events(now)
 
-                self.output_data["rain"] = round(sum(d for _, d in self.rain_events), 2)
+                self.output_data["rain"] = self.rain_total()
 
-                # Persist rain events to retained MQTT topic
-                client.publish(TOPIC_RAIN_24H, json.dumps(list(self.rain_events)), retain=True)
+                if pruned or self.rain != previous_rain:
+                    self.save_state()
+                    client.publish(TOPIC_RAIN_24H, json.dumps(list(self.rain_events)), retain=True)
         elif message.topic == self.input_topic_indoor:
             # The indoor unit sometimes reports a negative temperature
             # The indoor unit sometimes reports a humidity much lower than the previous reading
@@ -191,10 +281,9 @@ class MQTTClient:
                 if "lightning_distance" in self.output_data:
                     self.output_data.pop("lightning_distance")
                 return
-            if self.total_lightning_strikes == -1:
-                self.total_lightning_strikes = 0
             self.total_lightning_strikes += 1
             self.output_data["lightning_strike_count"] = self.total_lightning_strikes
+            self.save_state()
             self.client.publish(TOPIC_LIGHTNING_COUNT, str(self.total_lightning_strikes), retain=True)
             if "energy" in data and data["energy"] is not None:
                 self.output_data["lightning_energy"] = data["energy"]
@@ -249,16 +338,18 @@ class MQTTClient:
     # Define the on_connect function for the MQTT client
     def on_connect(self, client, userdata, flags, reason_code, properties):
         print("Connected with result code "+str(reason_code))
+        with self.state_lock:
+            if self.migrating:
+                client.subscribe(TOPIC_LIGHTNING_COUNT)
+                client.subscribe(TOPIC_RAIN_24H)
+                if self.migration_timer is None:
+                    self.migration_timer = threading.Timer(MIGRATION_TIMEOUT_SECONDS, self.finish_migration)
+                    self.migration_timer.daemon = True
+                    self.migration_timer.start()
+                return
+        self.publish_state()
         # Subscribe to the input topics
-        client.subscribe(TOPIC_LIGHTNING_COUNT)
-        client.subscribe(TOPIC_RAIN_24H)
-        client.subscribe(self.input_topic_weather)
-        client.subscribe(self.input_topic_indoor)
-        client.subscribe(self.input_topic_lightning)
-        client.subscribe(self.input_topic_light)
-        client.subscribe(self.input_topic_pressure)
-        client.subscribe(self.input_topic_particle_sensor)
-        client.subscribe(self.input_topic_co2)
+        self.subscribe_inputs(client)
 
     # Define the on_disconnect function for the MQTT client
     def on_disconnect(self, client, userdata, flags, reason_code, properties):

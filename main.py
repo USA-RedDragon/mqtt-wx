@@ -21,6 +21,7 @@ def main():
         parser.add_argument("-input_topic_particle_sensor", help="Input topic for particle sensor data", default=get_config().input_topic_particle_sensor, required=False)
         parser.add_argument("-input_topic_co2", help="Input topic for CO2 sensor data", default=get_config().input_topic_co2, required=False)
         parser.add_argument("-output_topic", help="Output topic for processed data", default=get_config().output_topic, required=False)
+        parser.add_argument("-state_file", help="Path to the persisted state file", default=get_config().state_file, required=False)
         args = parser.parse_args()
 
         def signal_handler(sig, frame):
@@ -40,7 +41,8 @@ def main():
             args.input_topic_pressure,
             args.input_topic_particle_sensor,
             args.input_topic_co2,
-            args.output_topic
+            args.output_topic,
+            args.state_file
         )
 
         client.start()
