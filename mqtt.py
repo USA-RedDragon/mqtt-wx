@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import math
 import os
+import re
 import threading
 import time
 
@@ -17,6 +18,24 @@ TOPIC_RAIN_24H = f"{TOPIC_PREFIX}/rain_24h"
 
 RAIN_WINDOW_SECONDS = 24 * 60 * 60
 MIGRATION_TIMEOUT_SECONDS = 5
+RECONNECT_MIN_DELAY_SECONDS = 1
+RECONNECT_MAX_DELAY_SECONDS = 60
+
+NON_FINITE_TOKEN = re.compile(r'(?<=[:\[,])(\s*)[-+]?(?:nan|inf(?:inity)?)(?=\s*[,}\]])', re.IGNORECASE)
+
+
+def parse_payload(payload):
+    """Parse a JSON object payload, mapping NaN and Infinity (any case) to None. Return None if the payload is not a JSON object."""
+    try:
+        data = json.loads(payload, parse_constant=lambda _: None)
+    except json.JSONDecodeError:
+        try:
+            data = json.loads(NON_FINITE_TOKEN.sub(r'\1null', payload), parse_constant=lambda _: None)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(data, dict):
+        return None
+    return data
 
 
 class MQTTClient:
@@ -52,6 +71,8 @@ class MQTTClient:
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
+        self.client.on_connect_fail = self.on_connect_fail
+        self.client.reconnect_delay_set(RECONNECT_MIN_DELAY_SECONDS, RECONNECT_MAX_DELAY_SECONDS)
 
         self.total_lightning_strikes = 0
 
@@ -152,8 +173,8 @@ class MQTTClient:
         client.subscribe(self.input_topic_co2)
 
     def start(self):
-        self.client.connect(self.mqtt_host, 1883, 60)
-        self.client.loop_forever()
+        self.client.connect_async(self.mqtt_host, 1883, 60)
+        self.client.loop_forever(retry_first_connection=True)
 
     def stop(self):
         self.client.disconnect()
@@ -161,7 +182,11 @@ class MQTTClient:
     # Define the on_message function for the MQTT client
     def on_message(self, client, userdata, message):
         # Get the message payload as a JSON string
-        payload = message.payload.decode('utf-8')
+        try:
+            payload = message.payload.decode('utf-8')
+        except UnicodeDecodeError:
+            print(f"Warning: skipping non-UTF-8 payload on {message.topic}")
+            return
         self.previous_output_data = self.output_data.copy()
 
         if message.topic in (TOPIC_LIGHTNING_COUNT, TOPIC_RAIN_24H):
@@ -178,7 +203,10 @@ class MQTTClient:
             return
 
         # Convert the JSON string to a Python dictionary
-        data = json.loads(payload)
+        data = parse_payload(payload)
+        if data is None:
+            print(f"Warning: skipping invalid JSON payload on {message.topic}: {payload[:200]!r}")
+            return
 
         # Determine which input topic the message came from and update the output data accordingly
         if message.topic == self.input_topic_weather:
@@ -260,11 +288,15 @@ class MQTTClient:
             # The indoor unit sometimes reports a negative temperature
             # The indoor unit sometimes reports a humidity much lower than the previous reading
             # Ignore these values
-            if data["temperature"] < 0 or data["temperature"] > 50 or data["humidity"] < 0 or data["humidity"] > 100:
+            temperature = data.get("temperature")
+            humidity = data.get("humidity")
+            if temperature is None or humidity is None:
+                return
+            if temperature < 0 or temperature > 50 or humidity < 0 or humidity > 100:
                 return
 
-            self.output_data["inTemp"] = round(data["temperature"], 1)
-            self.output_data["inHumidity"] = data["humidity"]
+            self.output_data["inTemp"] = round(temperature, 1)
+            self.output_data["inHumidity"] = humidity
             if "tvoc" in data and data["tvoc"] is not None:
                 self.output_data["tvoc"] = round(data["tvoc"] * 0.001, 4)
 
@@ -289,7 +321,8 @@ class MQTTClient:
                 self.output_data["lightning_energy"] = data["energy"]
                 # The AS3935 sensor reports the distance at arbitrary km intervals
                 # Fix that by using the energy value to calculate the distance
-                self.output_data["lightning_distance"] = round(2100 / math.sqrt(data["energy"]), 1)
+                if data["energy"] > 0:
+                    self.output_data["lightning_distance"] = round(2100 / math.sqrt(data["energy"]), 1)
 
         elif message.topic == self.input_topic_light:
             if "lux" in data and data["lux"] is not None:
@@ -338,6 +371,8 @@ class MQTTClient:
     # Define the on_connect function for the MQTT client
     def on_connect(self, client, userdata, flags, reason_code, properties):
         print("Connected with result code "+str(reason_code))
+        if reason_code.is_failure:
+            return
         with self.state_lock:
             if self.migrating:
                 client.subscribe(TOPIC_LIGHTNING_COUNT)
@@ -354,4 +389,7 @@ class MQTTClient:
     # Define the on_disconnect function for the MQTT client
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         if reason_code != 0:
-            raise Exception("MQTT disconnection")
+            print(f"Disconnected from MQTT broker ({reason_code}), reconnecting")
+
+    def on_connect_fail(self, client, userdata):
+        print(f"Could not connect to MQTT broker at {self.mqtt_host}, retrying")
